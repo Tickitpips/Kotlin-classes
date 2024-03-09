@@ -11,6 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.classesinkotlin.ui.theme.ClassesInKotlinTheme
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -160,26 +162,26 @@ open class SmartDevice6(val name:String, val category:String){}
 
 //A SmartTvDevice class that extends a SmartDevice superclass
 class SmartTvDevice(deviceName: String, deviceCategory: String) :
-        SmartDevice4(name = deviceName, category = deviceCategory) {
+        SmartDevice4(name = deviceName, category = deviceCategory) { //SmartDevice4 is a parent class to SmartTvDevice
 
-        var speakerVolume = 2
+        var speakerVolume = 2           //sets initial speaker volume
             set(value) {
-                if (value in 0..100) {
+                if (value in 0..100) {   //Simply defines the expected range of the values
                     field = value
                 }
             }
-        var channelNumber = 1
+        var channelNumber = 1            //sets initial channel number
             set(value) {
                 if (value in 0..200) {
                     field = value
                 }
             }
-        fun increaseSpeakerVolume() {
+        fun increaseSpeakerVolume() {       //Describes a function to increase speaker volume of the TV
             speakerVolume++
             println("Speaker volume increased to $speakerVolume.")
         }
 
-        fun nextChannel() {
+        fun nextChannel() {              //Describes a function to change to the next channel of the TV
             channelNumber++
             println("Channel number increased to $channelNumber.")
         }
@@ -217,3 +219,163 @@ class SmartHome(val smartTvDevice: SmartTvDevice) {
         smartTvDevice.nextChannel()
     }
 }
+
+//Final solution with modifiers and related classes
+
+
+open class SmartDevice9(val name: String, val category: String) { //Creating a superclass for smart devices
+
+    var deviceStatus = "online"
+        protected set                          //Accessible in same class and subclass
+
+    open val deviceType = "unknown"
+
+    open fun turnOn() {
+        deviceStatus = "on"
+    }
+
+    open fun turnOff() {
+        deviceStatus = "off"
+    }
+}
+
+class SmartTvDevice9(deviceName: String, deviceCategory: String) : //Declaring SmartTvDevice9 subclass
+    SmartDevice9(name = deviceName, category = deviceCategory) {   //SmartDevice9is the superclass
+
+    override val deviceType = "Smart TV"                           //overrides deviceType property declared in the SmartDevice9 class
+
+    private var speakerVolume by RangeRegulator(initialValue = 2, minValue = 0, maxValue = 100)
+
+    private var channelNumber by RangeRegulator(initialValue = 1, minValue = 0, maxValue = 200)
+
+    fun increaseSpeakerVolume() {
+        speakerVolume++
+        println("Speaker volume increased to $speakerVolume.")
+    }
+
+    fun nextChannel() {
+        channelNumber++
+        println("Channel number increased to $channelNumber.")
+    }
+
+    override fun turnOn() {      //overriding method from the superclass under this subclass
+        super.turnOn()           //calling the overridden method using the super keyword
+        println(
+            "$name is turned on. Speaker volume is set to $speakerVolume and channel number is " +
+                    "set to $channelNumber."
+        )
+    }
+
+    override fun turnOff() {
+        super.turnOff()
+        println("$name turned off")
+    }
+}
+
+class SmartLightDevice(deviceName: String, deviceCategory: String) : //Declaring SmartLightDevice subclass
+    SmartDevice9(name = deviceName, category = deviceCategory) {
+
+    override val deviceType = "Smart Light"
+
+    private var brightnessLevel by RangeRegulator(initialValue = 0, minValue = 0, maxValue = 100)
+
+    fun increaseBrightness() {
+        brightnessLevel++
+        println("Brightness increased to $brightnessLevel.")
+    }
+
+    override fun turnOn() {
+        super.turnOn()
+        brightnessLevel = 2
+        println("$name turned on. The brightness level is $brightnessLevel.")
+    }
+
+    override fun turnOff() {
+        super.turnOff()
+        brightnessLevel = 0
+        println("Smart Light turned off")
+    }
+}
+
+class SmartHome9(
+    val smartTvDevice: SmartTvDevice,           //class SmartHome9 has a smartTvDevice.   Code means we are creating a smartDevice property of SmartTvDevice type
+    val smartLightDevice: SmartLightDevice      //class SmartHome9 has a smartLightDevice
+) {
+
+    var deviceTurnOnCount = 0
+        private set
+
+    fun turnOnTv() {
+        deviceTurnOnCount++
+        smartTvDevice.turnOn()
+    }
+
+    fun turnOffTv() {
+        deviceTurnOnCount--
+        smartTvDevice.turnOff()
+    }
+
+    fun increaseTvVolume() {
+        smartTvDevice.increaseSpeakerVolume()
+    }
+
+    fun changeTvChannelToNext() {
+        smartTvDevice.nextChannel()
+    }
+
+    fun turnOnLight() {
+        deviceTurnOnCount++
+        smartLightDevice.turnOn()
+    }
+
+    fun turnOffLight() {
+        deviceTurnOnCount--
+        smartLightDevice.turnOff()
+    }
+
+    fun increaseLightBrightness() {
+        smartLightDevice.increaseBrightness()
+    }
+
+    fun turnOffAllDevices() {
+        turnOffTv()
+        turnOffLight()
+    }
+}
+
+class RangeRegulator(
+//class RangeRegulator helps us create an interface to help with the abstraction of the getter and setter function
+// It implements the ReadWriteProperty<Any?, Int> interface
+
+    initialValue: Int,
+    private val minValue: Int,
+    private val maxValue: Int
+) : ReadWriteProperty<Any?, Int> {
+
+    var fieldData = initialValue
+
+    override fun getValue(thisRef: Any?, property: KProperty<*>): Int {
+        return fieldData
+    }
+
+    override fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) {
+        if (value in minValue..maxValue) {
+            fieldData = value
+        }
+    }
+}
+
+fun main9() {
+    var smartDevice: SmartDevice9 = SmartTvDevice9("Android TV", "Entertainment")
+    smartDevice.turnOn()
+
+    smartDevice = SmartLightDevice("Google Light", "Utility")
+    smartDevice.turnOn()
+}
+
+/*After the main function is run, the output should be:
+
+>>>Android TV is turned on. Speaker volume is set to 2 and channel number is set to 1.
+Google Light turned on. The brightness level is 2.
+
+ */
